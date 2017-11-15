@@ -14,6 +14,7 @@ float t_high = nonV.readFloat(4);
 float h_low = nonV.readFloat(8);
 float h_high = nonV.readFloat(12);
 
+
 long alarm_wd = 0;
 
 void sensorJsonOutput(JsonObject& json, float T, float H){
@@ -47,20 +48,39 @@ void loop() {
         res["status"] = "Ok";
       }
       else if(String(function) == "set"){
-        if(req.containsKey("humidity") && req.containsKey("temperature")){
+        if(req.containsKey("humidity")){
           JsonArray& humidity_limits = jsonBuffer.parseArray(req.get<String>("humidity"));
-          JsonArray& temperature_limits = jsonBuffer.parseArray(req.get<String>("temperature"));
-          h_low = humidity_limits[0];
-          h_high = humidity_limits[1];
-          t_low = temperature_limits[0];
-          t_high = temperature_limits[1];
-          nonV.writeFloat(0, t_low);
-          nonV.writeFloat(4, t_high);
-          nonV.writeFloat(8, h_low);
-          nonV.writeFloat(12, h_high);
-          res["status"] = "Ok";
+          if (humidity_limits[0] != h_low){
+            h_low = humidity_limits[0];
+            nonV.writeFloat(0, t_low);
+            res["status"] = "h_low C";
+          }
+          else if(humidity_limits[1] != h_high){
+            h_high = humidity_limits[1];
+            nonV.writeFloat(4, t_high);
+            res["status"] = "h_high C";
+          }
+          else{
+            res["status"] = "Same";
+          }
         }
+        else if(req.containsKey("temperature")){
+          JsonArray& temperature_limits = jsonBuffer.parseArray(req.get<String>("temperature"));
+          if(temperature_limits[0] != t_low){
+            t_low = temperature_limits[0];
+            nonV.writeFloat(8, t_low);
+            res["status"] = "t_low C";
+          }
+          else if(temperature_limits[1] != t_high){
+            t_high = temperature_limits[1];
+            nonV.writeFloat(12, t_high);
+            res["status"] = "t_high C";
+
+        }
+
       }
+    }
+
       else if(String(function) == "status"){
         JsonArray& humidity_limits = jsonBuffer.createArray();
         JsonArray& temperature_limits = jsonBuffer.createArray();
