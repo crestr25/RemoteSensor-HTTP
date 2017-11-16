@@ -1,5 +1,5 @@
 var SerialPort = require('serialport');
-var port = new SerialPort('/dev/tty.usbmodemFA131',{
+var port = new SerialPort('/dev/ttyACM0',{
   baudRate : 115200,
   parser: SerialPort.parsers.readline('\n')
 });
@@ -46,83 +46,86 @@ port.on('data', function (data) {
 //   })
 // },10000)
 
-function timer()
-{
-    var timer = {
-        running: false,
-        iv: 5000,
-        timeout: false,
-        cb : function(){},
-        start : function(cb,iv,sd){
-            var elm = this;
-            clearInterval(this.timeout);
-            this.running = true;
-            if(cb) this.cb = cb;
-            if(iv) this.iv = iv;
-            if(sd) elm.execute(elm);
-            this.timeout = setTimeout(function(){elm.execute(elm)}, this.iv);
-        },
-        execute : function(e){
-            if(!e.running) return false;
-            e.cb();
-            e.start();
-        },
-        stop : function(){
-            this.running = false;
-        },
-        set_interval : function(iv){
-            clearInterval(this.timeout);
-            this.start(false, iv);
-        }
-    };
-    return timer;
+function timer(variable, sensor = null, user = null, dp_timer = null){
+  var timer = {
+    user : user,
+    sensor : sensor,
+    variable : variable,
+    dp_timer : dp_timer,
+    running: false,
+    iv: 5000,
+    timeout: false,
+    cb : function(){},
+    start : function(cb,iv,sd){
+      var elm = this;
+      clearInterval(this.timeout);
+      this.running = true;
+      if(cb) this.cb = cb;
+      if(iv) this.iv = iv;
+      if(sd) elm.execute(elm);
+      this.timeout = setTimeout(function(){elm.execute(elm)}, this.iv);
+    },
+    execute : function(e){
+      if(!e.running) return false;
+      if(user){
+        e.cb(this.user, this.sensor, this.variable, this.dp_timer);
+      }
+      else {
+        e.cb(this.variable);
+      }
+      e.start();
+    },
+    stop : function(){
+      this.running = false;
+    },
+    set_interval : function(iv){
+      clearInterval(this.timeout);
+      this.start(false, iv);
+    }
+  };
+  return timer;
 }
 
-// ::: Timer number 1 :::
-
-var timer_1 = new timer();
-timer_1.start(function(){
+function requestServerInfo(user, sensor, variable, timer){
+  url = "http://localhost:8080/api/user/" + user + "/sensor/" + sensor + "/" + variable
   request({
-    url : url_variables[0],
-    method: "GET",
-    //json : payload
+    url : url,
+    method: "GET"
   }, function(err, response, body) {
-    var info = JSON.parse(body);
-    console.log("Hum: High - " + info.trigger[1] + " Low - " + info.trigger[0])
+    if(err){}
+    else {
+      if(response.statusCode == 200){
+        var var_response = JSON.parse(body);
+        console.log(variable + ": High - " + var_response.trigger[1] + " Low - " + var_response.trigger[0])
+        var hardware_requests = {
+          function:"set"
+        }
+        hardware_requests[variable] = [var_response.trigger[0], var_response.trigger[1]]
+        console.log(timer.iv)
+        timer.set_interval(var_response.poll)
+        port.write(JSON.stringify(hardware_requests))
+      }
+    }
+  })
+}
+
+function requestHardwareRead(variable){
+  console.log("here!");
     var hardware_requests = {
-      function:"set",
-      humidity: [info.trigger[0], info.trigger[1]]
+      function : "read",
+      variable : variable
     }
     port.write(JSON.stringify(hardware_requests))
-  })
+}
 
-}, 15000, false);
+var humidity_hardware_pool = new timer('humidity')
+humidity_hardware_pool.start(requestHardwareRead, 5000, false)
 
-// ::: Timer number 2 :::
+var humidity_server_pool = new timer('humidity', 'DHT', 'crestr25', humidity_hardware_pool)
+humidity_server_pool.start(requestServerInfo, 15000, false)
 
+var temperature_hardware_pool = new timer('temperature')
+temperature_hardware_pool.start(requestHardwareRead, 5000, false)
 
-var timer_2 = new timer();
-
-timer_2.start(function(){
-  request({
-    url : url_variables[1],
-    method: "GET",
-    //json : payload
-  }, function(err, response, body) {
-    var info = JSON.parse(body);
-    console.log("Temp: High - " + info.trigger[1] + " Low - " + info.trigger[0])
-    var hardware_requests = {
-      function:"set",
-      humidity: [info.trigger[0], info.trigger[1]]
-    }
-    port.write(JSON.stringify(hardware_requests))
-  })
-
-}, 10000, false);
-
-// setInterval(function(){
-  // var hardware_requests = {
-  //   function:"read"
-  // }
-//   port.write(JSON.stringify(hardware_requests))
-// }, 20000);
+var temperature_server_pool = new timer('temperature', 'DHT', 'crestr25', temperature_hardware_pool)
+temperature_server_pool.start(requestServerInfo, 15000, false)

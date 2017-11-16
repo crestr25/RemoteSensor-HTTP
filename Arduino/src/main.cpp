@@ -43,43 +43,52 @@ void loop() {
       char* function;
       function = req["function"];
       res["function"] = String(function);
+
       if(String(function) == "read"){
-        sensorJsonOutput(res ,temperature, humidity);
+        if(req.get<String>("variable") == "humidity"){
+          res[req.get<String>("variable")] = humidity;
+        }
+        if(req.get<String>("variable") == "temperature"){
+          res[req.get<String>("variable")] = temperature;
+        }
         res["status"] = "Ok";
       }
+
       else if(String(function) == "set"){
         if(req.containsKey("humidity")){
           JsonArray& humidity_limits = jsonBuffer.parseArray(req.get<String>("humidity"));
-          if (humidity_limits[0] != h_low){
-            h_low = humidity_limits[0];
-            nonV.writeFloat(0, t_low);
-            res["status"] = "h_low C";
-          }
-          else if(humidity_limits[1] != h_high){
-            h_high = humidity_limits[1];
-            nonV.writeFloat(4, t_high);
-            res["status"] = "h_high C";
-          }
-          else{
-            res["status"] = "Same";
-          }
-        }
-        else if(req.containsKey("temperature")){
+          if((humidity_limits[0] != h_low) || (humidity_limits[1] != h_high)){
+            if(humidity_limits[0] != h_low){
+              h_low = humidity_limits[0];
+              nonV.writeFloat(8, h_low);
+            }
+            if(humidity_limits[1] != h_high){
+              h_high = humidity_limits[1];
+              nonV.writeFloat(12, h_high);
+            }
+            res["status"] = "Hum Mod";
+        }else{
+          res["status"] = "no change";
+         }
+       }
+        if(req.containsKey("temperature")){
           JsonArray& temperature_limits = jsonBuffer.parseArray(req.get<String>("temperature"));
-          if(temperature_limits[0] != t_low){
-            t_low = temperature_limits[0];
-            nonV.writeFloat(8, t_low);
-            res["status"] = "t_low C";
+          if((temperature_limits[0] != t_low) || (temperature_limits[1] != t_high)){
+            if(temperature_limits[0] != t_low){
+              t_low = temperature_limits[0];
+              nonV.writeFloat(0, t_low);
+            }
+            if(temperature_limits[1] != t_high){
+              t_high = temperature_limits[1];
+              nonV.writeFloat(4, t_high);
+            }
+            res["status"] = "Tem change";
+          }else{
+            res["status"] = "no change";
           }
-          else if(temperature_limits[1] != t_high){
-            t_high = temperature_limits[1];
-            nonV.writeFloat(12, t_high);
-            res["status"] = "t_high C";
-
         }
-
       }
-    }
+
 
       else if(String(function) == "status"){
         JsonArray& humidity_limits = jsonBuffer.createArray();
