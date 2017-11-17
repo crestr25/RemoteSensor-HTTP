@@ -66,9 +66,9 @@ void loop() {
               h_high = humidity_limits[1];
               nonV.writeFloat(12, h_high);
             }
-            res["status"] = "Hum Mod";
+            res["status H"] = "HM";
         }else{
-          res["status"] = "no change";
+          res["status H"] = "NC";
          }
        }
         if(req.containsKey("temperature")){
@@ -82,9 +82,9 @@ void loop() {
               t_high = temperature_limits[1];
               nonV.writeFloat(4, t_high);
             }
-            res["status"] = "Tem change";
+            res["status T"] = "TM";
           }else{
-            res["status"] = "no change";
+            res["status T"] = "NC";
           }
         }
       }
@@ -115,32 +115,49 @@ void loop() {
     StaticJsonBuffer<200> jsonBuffer;
     JsonObject& res = jsonBuffer.createObject();
     JsonArray& alarm = jsonBuffer.createArray();
-    bool send = false;
+    bool send_temp = false;
+    bool send_hum = false;
     if(temperature >= t_high){
       alarm.add("TH");
-      send = true;
+      send_temp = true;
     }
     else if(temperature < t_low){
       alarm.add("TL");
-      send = true;
+      send_temp = true;
     }
 
     if(humidity >= h_high){
       alarm.add("HH");
-      send = true;
+      send_hum = true;
     }
     else if(humidity < h_low){
       alarm.add("HL");
-      send = true;
+      send_hum = true;
     }
 
-    if(send && millis() - alarm_wd > 10000){
-      res["alarm"] = alarm;
-      sensorJsonOutput(res ,temperature, humidity);
-      res["status"] = "alarm";
-      String resString;
-      res.printTo(resString);
-      Serial.println(resString);
+    if(millis() - alarm_wd > 10000){
+      if(send_hum && send_temp){
+        res["alarm"] = alarm;
+        sensorJsonOutput(res ,temperature, humidity);
+        res["status"] = "alarm";
+        String resString;
+        res.printTo(resString);
+        Serial.println(resString);
+      }else if(send_hum){
+        res["alarm"] = alarm;
+        sensorJsonOutput(res ,temperature, humidity);
+        res["status"] = "alarm";
+        String resString;
+        res.printTo(resString);
+        Serial.println(resString);
+      }else if(send_temp) {
+        res["alarm"] = alarm;
+        sensorJsonOutput(res ,temperature, humidity);
+        res["status"] = "alarm";
+        String resString;
+        res.printTo(resString);
+        Serial.println(resString);
+      }
       alarm_wd = millis();
     }
   }
