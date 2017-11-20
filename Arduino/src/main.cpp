@@ -18,8 +18,15 @@ float h_high = nonV.readFloat(12);
 long alarm_wd = 0;
 
 void sensorJsonOutput(JsonObject& json, float T, float H){
-  json["temperature"] = T;
-  json["humidity"] = H;
+  if(T == 0){
+    json["humidity"] = H;
+  }else if(H == 0){
+    json["temperature"] = T;
+  }else{
+    json["temperature"] = T;
+    json["humidity"] = H;
+  }
+
 }
 
 void setup() {
@@ -46,10 +53,14 @@ void loop() {
 
       if(String(function) == "read"){
         if(req.get<String>("variable") == "humidity"){
-          res[req.get<String>("variable")] = humidity;
+          //res[req.get<String>("variable")] = humidity;
+          res["value"] = humidity;
+          res["name"] = "humidity";
         }
         if(req.get<String>("variable") == "temperature"){
-          res[req.get<String>("variable")] = temperature;
+          //res[req.get<String>("variable")] = temperature;
+          res["value"] = temperature;
+          res["name"] = "Temperature";
         }
         res["status"] = "Ok";
       }
@@ -145,14 +156,14 @@ void loop() {
         Serial.println(resString);
       }else if(send_hum){
         res["alarm"] = alarm;
-        sensorJsonOutput(res ,temperature, humidity);
+        sensorJsonOutput(res ,0 , humidity);
         res["status"] = "alarm";
         String resString;
         res.printTo(resString);
         Serial.println(resString);
       }else if(send_temp) {
         res["alarm"] = alarm;
-        sensorJsonOutput(res ,temperature, humidity);
+        sensorJsonOutput(res ,temperature, 0);
         res["status"] = "alarm";
         String resString;
         res.printTo(resString);

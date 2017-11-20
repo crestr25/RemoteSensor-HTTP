@@ -5,13 +5,6 @@ var port = new SerialPort('/dev/ttyACM0',{
 });
 var request = require('request');
 
-// ::: url variables :::
-var url_variables = [
-  "http://localhost:8080/api/user/crestr25/sensor/DHT/humedad",
-  "http://localhost:8080/api/user/crestr25/sensor/DHT/temperatura"
-]
-
-
 port.on('open', function(){
   console.log("SerialPort open!")
 });
@@ -19,32 +12,19 @@ port.on('open', function(){
 port.on('data', function (data) {
   payload = JSON.parse(data)
   console.log(payload.status)
-  request({
-    url : "http://localhost:8080/api/example",
-    method: "POST",
-    json : payload
+  if(payload.status == "alarm"){
+    console.log("alarma");
+  }else{
+    request({
+      url : "http://localhost:8080/api/user/crestr25/sensor/DHT/" + payload.name,
+      method: "POST",
+      json : payload
 
-  }, function(err, response, body) {
-    console.log("body: ", body)
-  })
+    }, function(err, response, body) {
+      console.log("body: ", body)
+    })
+  }
 });
-
-
-
-// setInterval(function(){
-//   url_variables.forEach(function(url_variables){
-//     request({
-//       url : url_variables,
-//       method: "GET",
-//       //json : payload
-//     }, function(err, response, body) {
-//       console.log("body: ", body)
-//     })
-//     var hardware_requests = {
-//       function:"set"
-//     }
-//   })
-// },10000)
 
 function timer(variable, sensor = null, user = null, dp_timer = null){
   var timer = {
